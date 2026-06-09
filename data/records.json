@@ -101,9 +101,28 @@
       ],
       "created_at": "2026-06-09T20:31:32.358204",
       "last_updated": "2026-06-09T20:31:32.358259"
+    },
+    "09634394244714d7600a90b4344dffc7": {
+      "md5": "09634394244714d7600a90b4344dffc7",
+      "original_filename": "1111.png",
+      "upload_path": "/Volumes/代码/solo/lp0005/storage/uploads/de41977c1f8a40e2a857d824e143504a.png",
+      "upload_url": "/uploads/de41977c1f8a40e2a857d824e143504a.png",
+      "conversions": [
+        {
+          "id": "0ad29fd612a5",
+          "style": "sketch",
+          "intensity": 0.8,
+          "output_filename": "d007d383f6e34e81b9c31a1e99a0f9e7_sketch.png",
+          "output_url": "/outputs/d007d383f6e34e81b9c31a1e99a0f9e7_sketch.png",
+          "created_at": "2026-06-09T21:03:31.521075"
+        }
+      ],
+      "created_at": "2026-06-09T21:03:31.521051",
+      "last_updated": "2026-06-09T21:03:31.521077"
     }
   },
   "order": [
+    "09634394244714d7600a90b4344dffc7",
     "3a82fb75ffea352a9c34b67f34dae472",
     "7cc80e4964787bb5dce9a7dfc7fda4b4",
     "5ad89d1d4bac4f602d7ccfdbb0ea920f"

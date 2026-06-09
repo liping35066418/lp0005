@@ -15,7 +15,6 @@ for d in [STORAGE_DIR, UPLOAD_DIR, OUTPUT_DIR, LOG_DIR, DATA_DIR]:
     os.makedirs(d, exist_ok=True)
 
 STATS_FILE = os.path.join(DATA_DIR, "stats.json")
-RECORDS_FILE = os.path.join(DATA_DIR, "records.json")
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff"}

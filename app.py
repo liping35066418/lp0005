@@ -3,6 +3,7 @@ import io
 import zipfile
 import uuid
 import time
+import hashlib
 from typing import List, Optional
 from pathlib import Path
 
@@ -16,7 +17,8 @@ from config import (
     ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE, STYLES
 )
 from style_processor import process_image, STYLE_FUNCTIONS, check_style_availability
-from stats_manager import record_processing, get_stats, get_grouped_records, compute_md5
+from stats_manager import record_processing, get_stats
+from records_manager import add_conversion, get_all_records
 from logger_config import get_logger
 
 logger = get_logger("app")
@@ -43,6 +45,10 @@ async def startup_event():
         logger.exception(f"风格自检失败: {e}")
 
 
+def _compute_md5(file_bytes: bytes) -> str:
+    return hashlib.md5(file_bytes).hexdigest()
+
+
 def _validate_extension(filename: str) -> bool:
     ext = os.path.splitext(filename.lower())[1]
     return ext in ALLOWED_EXTENSIONS
@@ -50,20 +56,19 @@ def _validate_extension(filename: str) -> bool:
 
 def _save_upload(file_bytes: bytes, filename: str) -> tuple:
     ext = os.path.splitext(filename)[1] or ".png"
-    md5 = compute_md5(file_bytes)
     unique_name = f"{uuid.uuid4().hex}{ext}"
     save_path = os.path.join(UPLOAD_DIR, unique_name)
     with open(save_path, "wb") as f:
         f.write(file_bytes)
-    return save_path, md5
+    return save_path, f"/uploads/{unique_name}"
 
 
-def _save_output(image_bytes: bytes, style_id: str) -> str:
+def _save_output(image_bytes: bytes, style_id: str) -> tuple:
     unique_name = f"{uuid.uuid4().hex}_{style_id}.png"
     save_path = os.path.join(OUTPUT_DIR, unique_name)
     with open(save_path, "wb") as f:
         f.write(image_bytes)
-    return save_path
+    return save_path, f"/outputs/{unique_name}"
 
 
 @app.middleware("http")
@@ -117,28 +122,31 @@ async def process_single(
         raise HTTPException(status_code=400, detail=f"文件过大，最大支持 {MAX_UPLOAD_SIZE // 1024 // 1024}MB")
 
     try:
-        upload_path, md5 = _save_upload(file_bytes, file.filename or "image.png")
+        md5 = _compute_md5(file_bytes)
+        upload_path, upload_url = _save_upload(file_bytes, file.filename or "image.png")
         result_bytes = process_image(file_bytes, style, intensity)
-        output_path = _save_output(result_bytes, style)
+        output_path, output_url = _save_output(result_bytes, style)
         output_filename = Path(output_path).name
-        record_processing(
-            style_id=style,
-            count=1,
+
+        add_conversion(
             md5=md5,
             original_filename=file.filename or "image.png",
             upload_path=upload_path,
-            output_filename=output_filename,
-            output_url=f"/outputs/{output_filename}",
+            upload_url=upload_url,
+            style=style,
             intensity=intensity,
+            output_filename=output_filename,
+            output_url=output_url,
         )
+
+        record_processing(style, 1)
         return JSONResponse(content={
             "success": True,
             "filename": output_filename,
-            "url": f"/outputs/{output_filename}",
+            "url": output_url,
             "style": style,
             "intensity": intensity,
             "md5": md5,
-            "upload_url": f"/uploads/{Path(upload_path).name}",
         })
     except ValueError as e:
         logger.error(f"处理图片失败: {e}")
@@ -181,32 +189,37 @@ async def process_batch(
                 results.append({"name": file.filename, "error": "文件过大"})
                 continue
 
-            upload_path, md5 = _save_upload(file_bytes, file.filename or "image.png")
+            md5 = _compute_md5(file_bytes)
+            upload_path, upload_url = _save_upload(file_bytes, file.filename or "image.png")
             result_bytes = process_image(file_bytes, style, intensity)
-            output_path = _save_output(result_bytes, style)
+            output_path, output_url = _save_output(result_bytes, style)
             output_filename = Path(output_path).name
-            success_count += 1
-            record_processing(
-                style_id=style,
-                count=1,
+
+            add_conversion(
                 md5=md5,
                 original_filename=file.filename or "image.png",
                 upload_path=upload_path,
-                output_filename=output_filename,
-                output_url=f"/outputs/{output_filename}",
+                upload_url=upload_url,
+                style=style,
                 intensity=intensity,
+                output_filename=output_filename,
+                output_url=output_url,
             )
+
+            success_count += 1
             results.append({
                 "name": file.filename,
                 "filename": output_filename,
-                "url": f"/outputs/{output_filename}",
+                "url": output_url,
                 "md5": md5,
-                "upload_url": f"/uploads/{Path(upload_path).name}",
             })
         except Exception as e:
             logger.error(f"批量处理 {file.filename} 失败: {e}")
             error_count += 1
             results.append({"name": file.filename, "error": str(e)})
+
+    if success_count > 0:
+        record_processing(style, success_count)
 
     has_success = success_count > 0
     return JSONResponse(content={
@@ -218,6 +231,12 @@ async def process_batch(
         "intensity": intensity,
         "results": results,
     }, status_code=200 if has_success or error_count == 0 else 200)
+
+
+@app.get("/api/records")
+async def api_get_records():
+    records = get_all_records()
+    return JSONResponse(content={"records": records})
 
 
 @app.post("/api/batch/download")
@@ -247,19 +266,13 @@ async def download_batch(request: Request):
     )
 
 
-@app.get("/api/records")
-async def api_get_records():
-    records = get_grouped_records()
-    return JSONResponse(content={"groups": records})
-
-
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "port": PORT}
 
 
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 _static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 if os.path.exists(_static_dir):
