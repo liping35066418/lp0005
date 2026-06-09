@@ -158,8 +158,15 @@
                         <div class="stat-card gradient-1">
                             <div class="stat-icon">🖼️</div>
                             <div class="stat-info">
-                                <span class="stat-label">总处理图片</span>
-                                <span id="stat-total" class="stat-value">0</span>
+                                <span class="stat-label">原图张数（去重）</span>
+                                <span id="stat-total-unique" class="stat-value">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card gradient-1b">
+                            <div class="stat-icon">🔄</div>
+                            <div class="stat-info">
+                                <span class="stat-label">累计转换次数</span>
+                                <span id="stat-total-conversions" class="stat-value">0</span>
                             </div>
                         </div>
                         <div class="stat-card gradient-2">
@@ -199,6 +206,14 @@
                     <div class="panel style-details-panel">
                         <h3 class="panel-title">🎭 风格详情</h3>
                         <div id="style-details" class="style-details-grid"></div>
+                    </div>
+
+                    <div class="panel records-panel">
+                        <h3 class="panel-title">
+                            📒 转换记录（按原图分组）
+                            <button id="refresh-records-btn" class="mini-btn" style="margin-left:12px;">🔄 刷新</button>
+                        </h3>
+                        <div id="records-container" class="records-container"></div>
                     </div>
                 </div>
             </section>

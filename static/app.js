@@ -9,6 +9,17 @@ const STYLE_EMOJIS = {
     cyberpunk: '🌆',
 };
 
+const STYLE_NAMES = {
+    anime: '动漫风',
+    sketch: '手绘素描',
+    vintage: '复古胶片',
+    cartoon: '卡通涂鸦',
+    oil_paint: '油画风格',
+    watercolor: '水彩画',
+    pixel: '像素风',
+    cyberpunk: '赛博朋克',
+};
+
 const state = {
     styles: [],
     singleFile: null,
@@ -18,6 +29,7 @@ const state = {
     batchStyle: 'anime',
     batchIntensity: 0.8,
     batchResults: [],
+    expandedGroups: new Set(),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -81,6 +93,16 @@ async function loadStats() {
         renderStats(data.stats);
     } catch (e) {
         console.error('加载统计失败', e);
+    }
+}
+
+async function loadRecords() {
+    try {
+        const res = await fetch('/api/records');
+        const data = await res.json();
+        renderRecords(data.groups || []);
+    } catch (e) {
+        console.error('加载记录失败', e);
     }
 }
 
@@ -192,6 +214,7 @@ function setupTabs() {
             $(`tab-${tab}`).classList.add('active');
             if (tab === 'stats') {
                 loadStats();
+                loadRecords();
             }
         });
     });
@@ -540,7 +563,8 @@ async function handleBatchDownload() {
 function renderStats(stats) {
     window.__statsCache = stats || {};
 
-    $('stat-total').textContent = stats?.total_processed || 0;
+    $('stat-total-unique').textContent = stats?.total_unique_images ?? stats?.total_processed ?? 0;
+    $('stat-total-conversions').textContent = stats?.total_conversions ?? stats?.total_processed ?? 0;
 
     const usage = stats?.style_usage || {};
     const sortedStyles = Object.entries(usage).sort((a, b) => b[1] - a[1]);
@@ -630,6 +654,101 @@ function renderTrendChart(dailyData) {
     });
 }
 
+function formatTime(isoStr) {
+    if (!isoStr) return '-';
+    try {
+        const d = new Date(isoStr);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch (e) {
+        return isoStr.slice(5, 16).replace('T', ' ');
+    }
+}
+
+function renderRecords(groups) {
+    const container = $('records-container');
+    container.innerHTML = '';
+
+    if (!groups || groups.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:40px 0;">暂无转换记录，快去转换一张图片吧！</p>';
+        return;
+    }
+
+    groups.forEach(group => {
+        const isExpanded = state.expandedGroups.has(group.md5);
+        const styleCount = group.conversions_count;
+
+        const header = el('div', {
+            class: 'record-group-header' + (isExpanded ? ' expanded' : ''),
+            onclick: () => {
+                if (isExpanded) {
+                    state.expandedGroups.delete(group.md5);
+                } else {
+                    state.expandedGroups.add(group.md5);
+                }
+                renderRecords(groups);
+            },
+        }, [
+            el('div', { class: 'record-group-thumb' }, [
+                group.upload_url ? el('img', { src: group.upload_url, alt: group.original_filename }) : el('span', {}, '🖼️'),
+            ]),
+            el('div', { class: 'record-group-info' }, [
+                el('div', { class: 'record-group-filename' }, [
+                    el('span', { class: 'record-original-name', title: group.original_filename }, group.original_filename),
+                    el('span', { class: 'record-md5-badge', title: '原图指纹' }, `MD5: ${group.md5.slice(0, 8)}...`),
+                ]),
+                el('div', { class: 'record-group-meta' }, [
+                    el('span', { class: 'record-meta-item' }, `📦 ${styleCount} 次转换`),
+                    el('span', { class: 'record-meta-item' }, `🕐 ${formatTime(group.created_at)}`),
+                    styleCount > 0 ? el('span', { class: 'record-meta-item' }, `🆕 ${formatTime(group.last_updated)}`) : null,
+                ]),
+            ]),
+            el('div', { class: 'record-group-arrow' }, [
+                el('span', {}, isExpanded ? '▼' : '▶'),
+            ]),
+        ]);
+
+        const content = isExpanded ? el('div', { class: 'record-group-content' }, [
+            group.conversions.length === 0
+                ? el('p', { style: 'color:var(--text-dim);padding:16px;text-align:center;' }, '此图暂无转换记录')
+                : el('div', { class: 'record-conversions-grid' },
+                    group.conversions.map(conv => {
+                        const styleId = conv.style;
+                        const styleName = STYLE_NAMES[styleId] || styleId;
+                        const styleEmoji = STYLE_EMOJIS[styleId] || '🎨';
+                        const baseName = group.original_filename.replace(/\.[^.]+$/, '');
+                        return el('div', { class: 'conversion-card' }, [
+                            el('div', { class: 'conversion-style-tag' }, [
+                                el('span', {}, styleEmoji),
+                                el('span', { class: 'conversion-style-name' }, styleName),
+                            ]),
+                            el('div', { class: 'conversion-image-wrap' }, [
+                                el('img', { src: conv.output_url, alt: `${styleName} 效果`, loading: 'lazy' }),
+                            ]),
+                            el('div', { class: 'conversion-info' }, [
+                                el('div', { class: 'conversion-meta' }, [
+                                    el('span', { class: 'conversion-time' }, `🕐 ${formatTime(conv.created_at)}`),
+                                    el('span', { class: 'conversion-intensity' }, `强度: ${Math.round((conv.intensity || 0.8) * 100)}%`),
+                                ]),
+                                el('button', {
+                                    class: 'conversion-download-btn',
+                                    title: '下载此风格图片',
+                                    onclick: () => downloadImage(conv.output_url, `${baseName}_${styleId}.png`),
+                                }, [
+                                    el('span', {}, '⬇️'),
+                                    el('span', {}, '重新下载'),
+                                ]),
+                            ]),
+                        ]);
+                    })
+                ),
+        ]) : null;
+
+        const groupEl = el('div', { class: 'record-group' }, [header, content].filter(Boolean));
+        container.appendChild(groupEl);
+    });
+}
+
 function init() {
     setupTabs();
     setupSingleUpload();
@@ -638,6 +757,15 @@ function init() {
     setupConvertBtn();
     loadStyles();
     loadStats();
+
+    const refreshBtn = $('refresh-records-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            loadStats();
+            loadRecords();
+            showToast('已刷新记录和统计', 'success');
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

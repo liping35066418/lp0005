@@ -1,0 +1,111 @@
+{
+  "groups": {
+    "5ad89d1d4bac4f602d7ccfdbb0ea920f": {
+      "md5": "5ad89d1d4bac4f602d7ccfdbb0ea920f",
+      "original_filename": "test_image_A.png",
+      "upload_path": "/Volumes/代码/solo/lp0005/storage/uploads/ccae77ec50bf4956b099a330846b8367.png",
+      "upload_url": "/uploads/ccae77ec50bf4956b099a330846b8367.png",
+      "conversions": [
+        {
+          "id": "778e856e0a61",
+          "style": "anime",
+          "intensity": 0.8,
+          "output_filename": "0cd25efd6cc342789e8d5d0f1169aed3_anime.png",
+          "output_url": "/outputs/0cd25efd6cc342789e8d5d0f1169aed3_anime.png",
+          "created_at": "2026-06-09T20:17:29.629088"
+        },
+        {
+          "id": "7c75fdae7d53",
+          "style": "vintage",
+          "intensity": 0.8,
+          "output_filename": "20d7050f48564f1ea6e6313cd194ed3f_vintage.png",
+          "output_url": "/outputs/20d7050f48564f1ea6e6313cd194ed3f_vintage.png",
+          "created_at": "2026-06-09T20:17:29.674216"
+        },
+        {
+          "id": "fc47988b1d65",
+          "style": "cyberpunk",
+          "intensity": 0.8,
+          "output_filename": "0cb67e168a664644ac3689157e879e00_cyberpunk.png",
+          "output_url": "/outputs/0cb67e168a664644ac3689157e879e00_cyberpunk.png",
+          "created_at": "2026-06-09T20:17:29.694974"
+        },
+        {
+          "id": "51a71c817a80",
+          "style": "anime",
+          "intensity": 0.8,
+          "output_filename": "23ac60e44ff54c958cc49c135757b6da_anime.png",
+          "output_url": "/outputs/23ac60e44ff54c958cc49c135757b6da_anime.png",
+          "created_at": "2026-06-09T20:17:29.727532"
+        }
+      ],
+      "created_at": "2026-06-09T20:17:29.629078",
+      "last_updated": "2026-06-09T20:17:29.727534"
+    },
+    "7cc80e4964787bb5dce9a7dfc7fda4b4": {
+      "md5": "7cc80e4964787bb5dce9a7dfc7fda4b4",
+      "original_filename": "test_image_B.png",
+      "upload_path": "/Volumes/代码/solo/lp0005/storage/uploads/141c8ce8ae174285916c71b53d331f45.png",
+      "upload_url": "/uploads/141c8ce8ae174285916c71b53d331f45.png",
+      "conversions": [
+        {
+          "id": "5b88e7b2ce7a",
+          "style": "sketch",
+          "intensity": 0.8,
+          "output_filename": "f78188e8a906482892e87addfb49cefe_sketch.png",
+          "output_url": "/outputs/f78188e8a906482892e87addfb49cefe_sketch.png",
+          "created_at": "2026-06-09T20:17:29.737815"
+        },
+        {
+          "id": "d556a7db222f",
+          "style": "oil_paint",
+          "intensity": 0.8,
+          "output_filename": "1733a4e6e56246529d38a90151b89edb_oil_paint.png",
+          "output_url": "/outputs/1733a4e6e56246529d38a90151b89edb_oil_paint.png",
+          "created_at": "2026-06-09T20:17:29.761388"
+        },
+        {
+          "id": "d8efcb4f5bf1",
+          "style": "watercolor",
+          "intensity": 0.8,
+          "output_filename": "7e9823913202498b9339a252346e4ff8_watercolor.png",
+          "output_url": "/outputs/7e9823913202498b9339a252346e4ff8_watercolor.png",
+          "created_at": "2026-06-09T20:17:29.820812"
+        },
+        {
+          "id": "05003d6846ff",
+          "style": "sketch",
+          "intensity": 0.8,
+          "output_filename": "553907b816b449a8be6ce4a772af005b_sketch.png",
+          "output_url": "/outputs/553907b816b449a8be6ce4a772af005b_sketch.png",
+          "created_at": "2026-06-09T20:17:29.832068"
+        }
+      ],
+      "created_at": "2026-06-09T20:17:29.737805",
+      "last_updated": "2026-06-09T20:17:29.832070"
+    },
+    "3a82fb75ffea352a9c34b67f34dae472": {
+      "md5": "3a82fb75ffea352a9c34b67f34dae472",
+      "original_filename": "ScreenShot_2026-06-06_192648_072.png",
+      "upload_path": "/Volumes/代码/solo/lp0005/storage/uploads/a484bb062cba4baaa8ff33ca6a6086f6.png",
+      "upload_url": "/uploads/a484bb062cba4baaa8ff33ca6a6086f6.png",
+      "conversions": [
+        {
+          "id": "0ba9e1c4122e",
+          "style": "cyberpunk",
+          "intensity": 1.0,
+          "output_filename": "b04c1dc7f2fe45b387ce251855e55f9d_cyberpunk.png",
+          "output_url": "/outputs/b04c1dc7f2fe45b387ce251855e55f9d_cyberpunk.png",
+          "created_at": "2026-06-09T20:31:32.358256"
+        }
+      ],
+      "created_at": "2026-06-09T20:31:32.358204",
+      "last_updated": "2026-06-09T20:31:32.358259"
+    }
+  },
+  "order": [
+    "3a82fb75ffea352a9c34b67f34dae472",
+    "7cc80e4964787bb5dce9a7dfc7fda4b4",
+    "5ad89d1d4bac4f602d7ccfdbb0ea920f"
+  ]
+}
