@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>趣味图片风格转换工具</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🎨</span>
+                <div>
+                    <h1>图片风格转换工坊</h1>
+                    <p class="subtitle">一键变身 · 本地处理 · 隐私无忧</p>
+                </div>
+            </div>
+            <nav class="nav-tabs">
+                <button class="tab-btn active" data-tab="single">单张转换</button>
+                <button class="tab-btn" data-tab="batch">批量处理</button>
+                <button class="tab-btn" data-tab="stats">数据统计</button>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <section id="tab-single" class="tab-panel active">
+                <div class="workspace">
+                    <aside class="sidebar">
+                        <div class="panel upload-panel">
+                            <h3 class="panel-title">📤 上传图片</h3>
+                            <div id="drop-zone" class="drop-zone">
+                                <div class="drop-icon">🖼️</div>
+                                <p class="drop-text">拖拽图片到此处</p>
+                                <p class="drop-sub">或点击选择文件</p>
+                                <p class="drop-hint">支持 JPG / PNG / BMP / WebP · 最大 50MB</p>
+                                <input type="file" id="file-input" accept="image/*" hidden>
+                            </div>
+                        </div>
+
+                        <div class="panel style-panel">
+                            <h3 class="panel-title">🎭 选择风格</h3>
+                            <div id="style-grid" class="style-grid"></div>
+                        </div>
+
+                        <div class="panel intensity-panel">
+                            <h3 class="panel-title">🎚️ 风格强度</h3>
+                            <div class="intensity-control">
+                                <span class="intensity-label">淡</span>
+                                <input type="range" id="intensity-slider" min="0" max="100" value="80" class="slider">
+                                <span class="intensity-label">浓</span>
+                            </div>
+                            <div class="intensity-value">
+                                当前强度: <span id="intensity-num">80</span>%
+                            </div>
+                        </div>
+
+                        <button id="convert-btn" class="convert-btn" disabled>
+                            <span class="btn-icon">✨</span>
+                            <span class="btn-text">开始转换</span>
+                        </button>
+                    </aside>
+
+                    <section class="preview-area">
+                        <div class="preview-container">
+                            <div class="preview-box">
+                                <div class="preview-header">
+                                    <span class="preview-label">📷 原图</span>
+                                </div>
+                                <div id="original-preview" class="preview-content">
+                                    <div class="placeholder">
+                                        <span class="placeholder-icon">⬜</span>
+                                        <p>尚未上传图片</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="vs-divider">
+                                <div class="vs-line"></div>
+                                <span class="vs-text">VS</span>
+                                <div class="vs-line"></div>
+                            </div>
+
+                            <div class="preview-box">
+                                <div class="preview-header">
+                                    <span class="preview-label">🎨 转换效果</span>
+                                    <button id="download-btn" class="download-btn hidden" title="下载图片">
+                                        ⬇️ 下载
+                                    </button>
+                                </div>
+                                <div id="result-preview" class="preview-content">
+                                    <div class="placeholder">
+                                        <span class="placeholder-icon">🎬</span>
+                                        <p>转换结果将显示在这里</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="loading-overlay" class="loading-overlay hidden">
+                            <div class="loader"></div>
+                            <p class="loading-text">正在施展魔法...</p>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="tab-batch" class="tab-panel">
+                <div class="batch-workspace">
+                    <div class="panel batch-upload-panel">
+                        <h3 class="panel-title">📦 批量上传图片（最多 20 张）</h3>
+                        <div id="batch-drop-zone" class="drop-zone batch-drop">
+                            <div class="drop-icon">📁</div>
+                            <p class="drop-text">拖拽多张图片到此处</p>
+                            <p class="drop-sub">或点击选择多个文件</p>
+                            <input type="file" id="batch-file-input" accept="image/*" multiple hidden>
+                        </div>
+                        <div id="batch-file-list" class="batch-file-list"></div>
+                    </div>
+
+                    <div class="panel batch-style-panel">
+                        <h3 class="panel-title">🎭 统一风格设置</h3>
+                        <div id="batch-style-grid" class="style-grid compact"></div>
+                        <div class="batch-intensity">
+                            <div class="intensity-control inline">
+                                <span>风格强度:</span>
+                                <input type="range" id="batch-intensity-slider" min="0" max="100" value="80" class="slider short">
+                                <span id="batch-intensity-num">80</span>%
+                            </div>
+                        </div>
+                        <div class="batch-actions">
+                            <button id="batch-clear-btn" class="secondary-btn">🗑️ 清空列表</button>
+                            <button id="batch-convert-btn" class="convert-btn" disabled>
+                                <span class="btn-icon">🚀</span>
+                                <span class="btn-text">开始批量转换</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="panel batch-results-panel">
+                        <h3 class="panel-title">📊 处理结果
+                            <button id="batch-download-all" class="mini-btn hidden">📦 打包下载全部</button>
+                        </h3>
+                        <div id="batch-progress" class="batch-progress hidden">
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill"></div>
+                            </div>
+                            <p id="progress-text">准备中...</p>
+                        </div>
+                        <div id="batch-results" class="batch-results-grid"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-stats" class="tab-panel">
+                <div class="stats-workspace">
+                    <div class="stats-cards">
+                        <div class="stat-card gradient-1">
+                            <div class="stat-icon">🖼️</div>
+                            <div class="stat-info">
+                                <span class="stat-label">总处理图片</span>
+                                <span id="stat-total" class="stat-value">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card gradient-2">
+                            <div class="stat-icon">🏆</div>
+                            <div class="stat-info">
+                                <span class="stat-label">最热门风格</span>
+                                <span id="stat-top-style" class="stat-value">-</span>
+                            </div>
+                        </div>
+                        <div class="stat-card gradient-3">
+                            <div class="stat-icon">📅</div>
+                            <div class="stat-info">
+                                <span class="stat-label">今日处理</span>
+                                <span id="stat-today" class="stat-value">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card gradient-4">
+                            <div class="stat-icon">🎨</div>
+                            <div class="stat-info">
+                                <span class="stat-label">可用风格</span>
+                                <span id="stat-style-count" class="stat-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stats-charts">
+                        <div class="panel">
+                            <h3 class="panel-title">📈 风格使用频次</h3>
+                            <div id="usage-chart" class="usage-chart"></div>
+                        </div>
+                        <div class="panel">
+                            <h3 class="panel-title">📆 近7日处理趋势</h3>
+                            <div id="trend-chart" class="trend-chart"></div>
+                        </div>
+                    </div>
+
+                    <div class="panel style-details-panel">
+                        <h3 class="panel-title">🎭 风格详情</h3>
+                        <div id="style-details" class="style-details-grid"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
