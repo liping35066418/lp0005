@@ -290,6 +290,36 @@ body::before {
     line-height: 1.4;
 }
 
+.style-card.unavailable {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(70%);
+    position: relative;
+}
+
+.style-card.unavailable::after {
+    content: '暂不可用';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 9px;
+    padding: 2px 6px;
+    background: var(--danger);
+    color: white;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.style-card.unavailable:hover {
+    border-color: var(--border);
+    transform: none;
+    box-shadow: none;
+}
+
+.style-card.unavailable:hover::before {
+    opacity: 0;
+}
+
 .style-grid.compact .style-card {
     padding: 10px 6px;
 }
@@ -1057,6 +1087,11 @@ body::before {
 .toast.error {
     border-color: var(--danger);
     background: rgba(239, 68, 68, 0.1);
+}
+
+.toast.info {
+    border-color: var(--primary-light);
+    background: rgba(99, 102, 241, 0.1);
 }
 
 @keyframes slideUp {

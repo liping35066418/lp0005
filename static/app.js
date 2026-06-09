@@ -53,6 +53,19 @@ async function loadStyles() {
         const res = await fetch('/api/styles');
         const data = await res.json();
         state.styles = data.styles;
+
+        const availableStyles = state.styles.filter(s => s.available !== false);
+        if (!state.styles.find(s => s.id === state.selectedStyle && s.available !== false) && availableStyles.length > 0) {
+            state.selectedStyle = availableStyles[0].id;
+        }
+        if (!state.styles.find(s => s.id === state.batchStyle && s.available !== false) && availableStyles.length > 0) {
+            state.batchStyle = availableStyles[0].id;
+        }
+        const unavailable = state.styles.filter(s => s.available === false).map(s => s.name);
+        if (unavailable.length > 0) {
+            console.warn('以下风格当前不可用:', unavailable);
+        }
+
         renderStyleGrid();
         renderBatchStyleGrid();
         renderStyleDetails();
@@ -75,9 +88,19 @@ function renderStyleGrid() {
     const grid = $('style-grid');
     grid.innerHTML = '';
     state.styles.forEach(s => {
+        const isUnavailable = s.available === false;
+        const classes = ['style-card'];
+        if (state.selectedStyle === s.id && !isUnavailable) classes.push('active');
+        if (isUnavailable) classes.push('unavailable');
         const card = el('div', {
-            class: `style-card ${state.selectedStyle === s.id ? 'active' : ''}`,
-            onclick: () => selectStyle(s.id),
+            class: classes.join(' '),
+            onclick: () => {
+                if (isUnavailable) {
+                    showToast(`${s.name} 风格当前不可用`, 'error');
+                    return;
+                }
+                selectStyle(s.id);
+            },
         }, [
             el('span', { class: 'emoji' }, STYLE_EMOJIS[s.id] || '🎨'),
             el('div', { class: 'name' }, s.name),
@@ -91,9 +114,19 @@ function renderBatchStyleGrid() {
     const grid = $('batch-style-grid');
     grid.innerHTML = '';
     state.styles.forEach(s => {
+        const isUnavailable = s.available === false;
+        const classes = ['style-card'];
+        if (state.batchStyle === s.id && !isUnavailable) classes.push('active');
+        if (isUnavailable) classes.push('unavailable');
         const card = el('div', {
-            class: `style-card ${state.batchStyle === s.id ? 'active' : ''}`,
-            onclick: () => selectBatchStyle(s.id),
+            class: classes.join(' '),
+            onclick: () => {
+                if (isUnavailable) {
+                    showToast(`${s.name} 风格当前不可用`, 'error');
+                    return;
+                }
+                selectBatchStyle(s.id);
+            },
         }, [
             el('span', { class: 'emoji' }, STYLE_EMOJIS[s.id] || '🎨'),
             el('div', { class: 'name' }, s.name),
@@ -422,9 +455,17 @@ async function handleBatchConvert() {
             renderBatchResults();
             if (data.success_count > 0) {
                 $('batch-download-all').classList.remove('hidden');
+            } else {
+                $('batch-download-all').classList.add('hidden');
             }
             loadStats();
-            showToast(`批量处理完成！成功 ${data.success_count} 张`, 'success');
+            if (data.success_count === data.total && data.total > 0) {
+                showToast(`批量处理完成！全部 ${data.success_count} 张成功`, 'success');
+            } else if (data.success_count > 0 && data.error_count > 0) {
+                showToast(`批量处理完成：成功 ${data.success_count} 张，失败 ${data.error_count} 张`, 'info');
+            } else {
+                showToast(`批量处理完成：全部失败（${data.error_count} 张），请查看原因`, 'error');
+            }
         }, total * 200 + 300);
     } catch (e) {
         showToast(e.message || '批量处理失败', 'error');

@@ -15,7 +15,7 @@ from config import (
     PORT, HOST, UPLOAD_DIR, OUTPUT_DIR,
     ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE, STYLES
 )
-from style_processor import process_image, STYLE_FUNCTIONS
+from style_processor import process_image, STYLE_FUNCTIONS, check_style_availability
 from stats_manager import record_processing, get_stats
 from logger_config import get_logger
 
@@ -30,6 +30,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("启动阶段：正在对 8 种风格进行可用性自检...")
+    try:
+        avail = check_style_availability(force=True)
+        ok_count = sum(1 for v in avail.values() if v)
+        logger.info(f"风格自检完成：{ok_count}/{len(avail)} 种风格可用 - {avail}")
+    except Exception as e:
+        logger.exception(f"风格自检失败: {e}")
 
 
 def _validate_extension(filename: str) -> bool:
@@ -65,11 +76,12 @@ async def log_requests(request: Request, call_next):
 
 @app.get("/api/styles")
 async def get_styles():
+    availability = check_style_availability(force=False)
     style_list = []
     for s in STYLES:
         style_list.append({
             **s,
-            "available": s["id"] in STYLE_FUNCTIONS
+            "available": availability.get(s["id"], False),
         })
     return JSONResponse(content={"styles": style_list})
 
@@ -86,6 +98,10 @@ async def process_single(
     style: str = Form(...),
     intensity: float = Form(0.8),
 ):
+    availability = check_style_availability(force=False)
+    if not availability.get(style, False):
+        raise HTTPException(status_code=400, detail=f"风格当前不可用: {style}")
+
     if style not in STYLE_FUNCTIONS:
         raise HTTPException(status_code=400, detail=f"不支持的风格: {style}")
 
@@ -126,6 +142,10 @@ async def process_batch(
     style: str = Form(...),
     intensity: float = Form(0.8),
 ):
+    availability = check_style_availability(force=False)
+    if not availability.get(style, False):
+        raise HTTPException(status_code=400, detail=f"风格当前不可用: {style}")
+
     if style not in STYLE_FUNCTIONS:
         raise HTTPException(status_code=400, detail=f"不支持的风格: {style}")
 
@@ -166,15 +186,16 @@ async def process_batch(
     if success_count > 0:
         record_processing(style, success_count)
 
+    has_success = success_count > 0
     return JSONResponse(content={
-        "success": True,
+        "success": has_success,
         "total": len(files),
         "success_count": success_count,
         "error_count": error_count,
         "style": style,
         "intensity": intensity,
         "results": results,
-    })
+    }, status_code=200 if has_success or error_count == 0 else 200)
 
 
 @app.post("/api/batch/download")

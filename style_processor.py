@@ -138,40 +138,60 @@ def cartoon_style(img: np.ndarray, intensity: float = 1.0) -> np.ndarray:
 def oil_paint_style(img: np.ndarray, intensity: float = 1.0) -> np.ndarray:
     orig = img.copy()
     img = _resize_if_needed(img)
+    h, w = img.shape[:2]
+    radius = 4
+    bins = 16
+    K = 2 * radius + 1
 
-    result = cv2.ximgproc.anisotropicDiffusion(img, 0.01, 0.05, 5) if hasattr(cv2, 'ximgproc') else cv2.bilateralFilter(img, 15, 150, 150)
-    h, w = result.shape[:2]
-    radius = 5
-    intensities = 20
-    output = np.zeros_like(result)
+    padded = cv2.copyMakeBorder(img, radius, radius, radius, radius, cv2.BORDER_REFLECT).astype(np.float32)
+    gray_pad = cv2.cvtColor(padded.astype(np.uint8), cv2.COLOR_BGR2GRAY)
+    bin_idx = (gray_pad.astype(np.float32) * bins / 255.0).astype(np.int32)
+    bin_idx = np.clip(bin_idx, 0, bins)
 
-    for y in range(h):
-        for x in range(w):
-            y_min = max(0, y - radius)
-            y_max = min(h, y + radius + 1)
-            x_min = max(0, x - radius)
-            x_max = min(w, x + radius + 1)
-            region = result[y_min:y_max, x_min:x_max]
+    oh, ow = h, w
+    final = np.zeros((oh, ow, 3), dtype=np.float32)
+    best_count = np.zeros((oh, ow), dtype=np.float32)
 
-            gray_region = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-            gray_idx = (gray_region * intensities / 255).astype(np.uint8)
+    for b in range(bins + 1):
+        bin_mask = (bin_idx == b).astype(np.uint8)
+        count = cv2.boxFilter(bin_mask, cv2.CV_32F, (K, K), normalize=False,
+                              borderType=cv2.BORDER_REFLECT)
+        count = count[radius:radius + oh, radius:radius + ow]
 
-            max_count = 0
-            best_i = 0
-            for i in range(intensities + 1):
-                count = np.sum(gray_idx == i)
-                if count > max_count:
-                    max_count = count
-                    best_i = i
+        ch_list = []
+        for c in range(3):
+            ch = padded[..., c] * bin_mask.astype(np.float32)
+            smoothed = cv2.boxFilter(ch, cv2.CV_32F, (K, K), normalize=False,
+                                     borderType=cv2.BORDER_REFLECT)
+            ch_list.append(smoothed[radius:radius + oh, radius:radius + ow])
+        sum_ch = np.stack(ch_list, axis=-1)
 
-            mask = (gray_idx == best_i)
-            masked = region[mask]
-            if len(masked) > 0:
-                output[y, x] = np.mean(masked, axis=0)
+        is_best = count > 0
+        if b == 0:
+            best_count = count.copy()
+            final = sum_ch.copy()
+        else:
+            better = count > best_count
+            update = better & is_best
+            best_count = np.where(update, count, best_count)
+            for c in range(3):
+                final[..., c] = np.where(update, sum_ch[..., c], final[..., c])
 
-    if output.shape != orig.shape:
-        output = cv2.resize(output, (orig.shape[1], orig.shape[0]), interpolation=cv2.INTER_LINEAR)
-    return _blend(orig, output, intensity)
+    best_count = np.maximum(best_count, 1.0)
+    for c in range(3):
+        final[..., c] /= best_count
+
+    final = np.clip(final, 0, 255).astype(np.uint8)
+    final = cv2.bilateralFilter(final, 7, 75, 75)
+
+    lab = cv2.cvtColor(final, cv2.COLOR_BGR2LAB).astype(np.float32)
+    lab[..., 1] = np.clip(lab[..., 1] * 1.08 - 5, 0, 255)
+    lab[..., 2] = np.clip(lab[..., 2] * 1.08 - 5, 0, 255)
+    final = cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
+
+    if final.shape != orig.shape:
+        final = cv2.resize(final, (orig.shape[1], orig.shape[0]), interpolation=cv2.INTER_LINEAR)
+    return _blend(orig, final, intensity)
 
 
 def watercolor_style(img: np.ndarray, intensity: float = 1.0) -> np.ndarray:
@@ -275,3 +295,43 @@ def process_image(image_bytes: bytes, style_id: str, intensity: float = 0.8) -> 
 
     _, encoded = cv2.imencode(".png", result, [cv2.IMWRITE_PNG_COMPRESSION, 3])
     return encoded.tobytes()
+
+
+_STYLE_AVAILABILITY_CACHE: dict[str, bool] = {}
+
+
+def _make_test_image() -> np.ndarray:
+    h, w = 200, 300
+    img = np.zeros((h, w, 3), dtype=np.uint8)
+    for y in range(h):
+        for x in range(w):
+            img[y, x, 0] = int(128 + 80 * np.sin(x / 30.0))
+            img[y, x, 1] = int(128 + 80 * np.sin(y / 25.0 + 1))
+            img[y, x, 2] = int(128 + 80 * np.sin((x + y) / 40.0 + 2))
+    cv2.circle(img, (w // 3, h // 3), 40, (60, 140, 220), -1)
+    cv2.rectangle(img, (w // 2, h // 2), (w * 4 // 5, h * 4 // 5), (180, 100, 80), -1)
+    return img
+
+
+def check_style_availability(force: bool = False) -> dict[str, bool]:
+    global _STYLE_AVAILABILITY_CACHE
+    if _STYLE_AVAILABILITY_CACHE and not force:
+        return dict(_STYLE_AVAILABILITY_CACHE)
+
+    test_img = _make_test_image()
+    _, test_buf = cv2.imencode(".png", test_img, [cv2.IMWRITE_PNG_COMPRESSION, 1])
+    test_bytes = test_buf.tobytes()
+
+    results: dict[str, bool] = {}
+    for sid in STYLE_FUNCTIONS:
+        try:
+            out = process_image(test_bytes, sid, intensity=0.8)
+            ok = isinstance(out, (bytes, bytearray)) and len(out) > 0
+            results[sid] = bool(ok)
+            logger.info(f"Style availability check [{sid}]: {'OK' if ok else 'EMPTY'}")
+        except Exception as e:
+            logger.warning(f"Style availability check [{sid}]: FAILED - {e}")
+            results[sid] = False
+
+    _STYLE_AVAILABILITY_CACHE = results
+    return dict(results)
